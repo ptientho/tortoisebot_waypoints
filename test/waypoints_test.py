@@ -42,9 +42,34 @@ class TestWaypointActionServer(unittest.TestCase):
         self.current_pos = msg.pose.pose.position
         self.current_yaw = yaw
 
-    def test_end_robot_pose(self):
-        #send a goal and check the result
+    def get_robot_params(self):
+        err_pos = math.sqrt(pow(self.current_pos.x - self.des_pos.position.x,2)+pow(self.current_pos.y - self.des_pos.position.y,2))
+        self.des_yaw = math.atan2(self.des_pos.position.y - self.current_pos.y, self.des_pos.position.x - self.current_pos.x)
+        err_yaw = self.des_yaw - self.current_yaw
+        
+        return err_pos, err_yaw
+    
+    def test_end_robot_pos1(self):
         self.client.cancel_goal()
+        self.des_pos.position.x = -0.1
+        self.des_pos.position.y = -0.1
+        
+        self.client.send_goal(self.des_pos)
+
+        #wait for the result.
+        self.client.wait_for_result(rospy.Duration(60))
+        if not self.client.get_result():
+            #print error message
+            raise RuntimeError("The waypoints action server is unsuccessful.")
+        else:
+            err_pos, err_yaw =  self.get_robot_params()
+            self.assertTrue(err_pos <= self.dist_precision, "check distance is within distance tolerance")
+            self.assertTrue(abs(err_yaw) <= self.yaw_precision, "check yaw is within yaw tolerance")
+            self.assertGreater(abs(self.current_yaw),0.0)
+
+    def test_end_robot_pos2(self):
+        self.client.cancel_goal()
+
         self.des_pos.position.x = 0.2
         self.des_pos.position.y = 0.2
         
@@ -52,21 +77,36 @@ class TestWaypointActionServer(unittest.TestCase):
 
         #wait for the result.
         self.client.wait_for_result(rospy.Duration(60))
-
-        if self.client.get_result():
-            err_pos = math.sqrt(pow(self.current_pos.x - self.des_pos.position.x,2)+pow(self.current_pos.y - self.des_pos.position.y,2))
-            self.des_yaw = math.atan2(self.des_pos.position.y - self.current_pos.y, self.des_pos.position.x - self.current_pos.x)
-            err_yaw = self.des_yaw - self.current_yaw
-
-            #compare err_pos with dist_precision and err_yaw with yaw_precision
+        if not self.client.get_result():
+            #print error message
+            raise RuntimeError("The waypoints action server is unsuccessful.")
+        else:
+            err_pos, err_yaw =  self.get_robot_params()
             self.assertTrue(err_pos <= self.dist_precision, "check distance is within distance tolerance")
             self.assertTrue(abs(err_yaw) <= self.yaw_precision, "check yaw is within yaw tolerance")
             self.assertGreater(abs(self.current_yaw),0.0)
-        else:
+    
+    def test_cancel_goal(self):
+        self.client.cancel_goal()
+        self.des_pos.position.x = -0.1
+        self.des_pos.position.y = -0.1
+        
+        self.client.send_goal(self.des_pos)
+
+        #wait for the result.
+        #self.client.wait_for_result(rospy.Duration(60))
+        self.client.cancel_all_goals()
+        if not self.client.get_result():
             #print error message
-            print("the waypoints action server is unsuccessful.")
-            self.assertTrue(self.client.get_result())
+            raise RuntimeError("The waypoints action server is unsuccessful.")
+        else:
+            err_pos, err_yaw =  self.get_robot_params()
+            self.assertTrue(err_pos <= self.dist_precision, "check distance is within distance tolerance")
+            self.assertTrue(abs(err_yaw) <= self.yaw_precision, "check yaw is within yaw tolerance")
+            self.assertGreater(abs(self.current_yaw),0.0)
+    
 ########################################################
 if __name__ == '__main__':
     rospy.init_node('my_test_node')
     rostest.rosrun(PKG, NAME, TestWaypointActionServer)
+    
