@@ -1,4 +1,11 @@
 <launch>
+
+  <!-- launch gazebo in headless version -->
+  <include file="$(find tortoisebot_gazebo)/launch/tortoisebot_playground.launch">
+    <arg name="gui" value="false"/>
+    <arg name="headless" value="true"/>
+  </include>
+  
   <node pkg="tortoisebot_waypoints" type="tortoisebot_action_server.py" name="tortoisebot_as" />
   <test test-name="waypoint_test" pkg="tortoisebot_waypoints" type="waypoints_test.py"/>
 </launch>
